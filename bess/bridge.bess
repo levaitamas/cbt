@@ -2,21 +2,21 @@
 
 vnf_inport = int($control_vnf_inport!'0')
 vnf_outport = int($control_vnf_outport!'0')
-traffictype = $traffictype!'simple'
+workers = int($vnf_num_cores!'1')
 
-print("%s %s %s" % (vnf_inport, vnf_outport, traffictype))
+portIn = PMDPort(port_id=vnf_inport,
+                 num_inc_q=workers,
+                 num_out_q=workers)
 if vnf_inport == vnf_outport:
-  port0 = PMDPort(port_id=vnf_inport)
-  input = PortInc(port=port0.name)
-  output = PortOut(port=port0.name)
+  portOut = portIn
 else:
-  portIn = PMDPort(port_id=vnf_inport)
   portOut = PMDPort(port_id=vnf_outport)
-  input = PortInc(port=portIn.name)
-  output = PortInc(port=portOut.name)
 
-if False:
-    fwd = MACSwap()
-    input -> fwd -> output
-else:
-    input -> Bypass() -> output
+for wid in range(workers):
+  input = QueueInc(port=portIn.name, qid=wid)
+  output = QueueOut(port=portOut.name, qid=wid)
+
+  input -> Bypass() -> output
+
+  bess.add_worker(wid, wid)
+  bess.attach_module(input.name, wid=wid)
